@@ -103,7 +103,7 @@ static ssize_t dpi_breaker_write(int fd, const void *data, size_t size)
     return write(fd, data, size);
 }
 
-ssize_t dpi_breaker_send(int fd, const void *data, size_t size, int flags)
+static ssize_t dpi_breaker_send(int fd, const void *data, size_t size, int flags)
 {
     if(is_http_request(data, size) || is_tls_client_hello(data, size))
         return send(fd, data, 1, flags);
