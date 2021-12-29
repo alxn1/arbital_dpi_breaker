@@ -97,16 +97,22 @@ example:
 
 static ssize_t dpi_breaker_write(int fd, const void *data, size_t size)
 {
-    if(is_http_request(data, size) || is_tls_client_hello(data, size))
+    if(is_tls_client_hello(data, size))
         return write(fd, data, 1);
+
+    if(is_http_request(data, size) && write(fd, "\n", 1) == -1)
+        return -1;
 
     return write(fd, data, size);
 }
 
 static ssize_t dpi_breaker_send(int fd, const void *data, size_t size, int flags)
 {
-    if(is_http_request(data, size) || is_tls_client_hello(data, size))
+    if(is_tls_client_hello(data, size))
         return send(fd, data, 1, flags);
+
+    if (is_http_request(data, size) && send(fd, "\n", 1, flags) == -1)
+        return -1;
 
     return send(fd, data, size, flags);
 }
