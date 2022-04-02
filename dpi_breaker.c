@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <sys/socket.h>
 
+#define TLS_RAGMENT_COUNT_MAX 40
+
 static bool is_http_request(const void *data, size_t size)
 {
     typedef struct {
@@ -97,8 +99,17 @@ example:
 
 static ssize_t dpi_breaker_write(int fd, const void *data, size_t size)
 {
-    if(is_tls_client_hello(data, size))
-        return write(fd, data, 1);
+    if(is_tls_client_hello(data, size)) {
+        size_t fragment_count = size > TLS_RAGMENT_COUNT_MAX?
+            TLS_RAGMENT_COUNT_MAX: size;
+
+        for(size_t i = 0; i < fragment_count; ++i) {
+            if(write(fd, data + i, 1) == -1)
+                return -1;
+        }
+
+        return fragment_count;
+    }
 
     if(is_http_request(data, size) && write(fd, "\n", 1) == -1)
         return -1;
@@ -108,8 +119,17 @@ static ssize_t dpi_breaker_write(int fd, const void *data, size_t size)
 
 static ssize_t dpi_breaker_send(int fd, const void *data, size_t size, int flags)
 {
-    if(is_tls_client_hello(data, size))
-        return send(fd, data, 1, flags);
+    if(is_tls_client_hello(data, size)) {
+        size_t fragment_count = size > TLS_RAGMENT_COUNT_MAX?
+            TLS_RAGMENT_COUNT_MAX: size;
+
+        for(size_t i = 0; i < fragment_count; ++i) {
+            if(send(fd, data + i, 1, flags) == -1)
+                return -1;
+        }
+
+        return fragment_count;
+    }
 
     if (is_http_request(data, size) && send(fd, "\n", 1, flags) == -1)
         return -1;
